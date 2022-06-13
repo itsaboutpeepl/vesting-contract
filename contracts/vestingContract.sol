@@ -124,6 +124,12 @@ contract TokenVesting is Ownable, ReentrancyGuard{
 
     /**
     *@notice Creates a new vesting schedule for a beneficiary.
+    *@param _beneficiary address of the beneficiary to whom vested tokens are transferred
+    *@param _start start time of vesting period
+    *@param _cliff duration in seconds of the cliff in which tokens will begin to vest
+    *@param _duration in seconds of the period in which the tokens will be vested
+    *@param _revocable is whether we can revoke vesting or not
+    *@param _amount total amount of tokens to be released at the end of the vesting
     */
 
     function createVestingSchedule(
@@ -260,18 +266,19 @@ contract TokenVesting is Ownable, ReentrancyGuard{
         return keccak256(abi.encodePacked(holder, index));
     }
 
+    
     /**
     *@dev Computees the releasable amount of tokens for a vesting schedule.
     *@return the amount of releasable tokens
     */
     function _computeReleasableAmount(VestingSchedule memory vestingSchedule) internal view returns(uint256){
         uint256 currentTime = getCurrentTime();
-        if ((currentTime < vestingSchedule.cliff) || vestingSchedule.revoked == true){
+        if((currentTime < vestingSchedule.cliff) || vestingSchedule.revoked == true) {
             return 0;
         } else if (currentTime >= vestingSchedule.start.add(vestingSchedule.duration)) {
             return vestingSchedule.amountTotal.sub(vestingSchedule.released);
         } else {
-            uint256 timeFromStart = currentTime.sub(vestingSchedule.released);
+            uint256 timeFromStart = currentTime.sub(vestingSchedule.start);
             uint secondsPerSlice = vestingSchedule.slicePeriodSeconds;
             uint256 vestedSlicePeriods = timeFromStart.div(secondsPerSlice);
             uint256 vestedSeconds = vestedSlicePeriods.mul(secondsPerSlice);
@@ -279,12 +286,11 @@ contract TokenVesting is Ownable, ReentrancyGuard{
             vestedAmount = vestedAmount.sub(vestingSchedule.released);
             return vestedAmount;
         }
-
     }
+
 
     //virtual allows inheriting contracts to override function
     function getCurrentTime() internal virtual view returns(uint256){
         return block.timestamp;
     }
 }
-
